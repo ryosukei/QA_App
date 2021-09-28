@@ -80,6 +80,7 @@ class QuestionDetailListAdapter(context: Context, private val mQuestion: Questio
                     val favoriteRef = mFavoriteRef.child("favorites").child(currentUser!!.uid).child(mQuestion.questionUid)
                     favoriteRef.setValue(data)
                     isFavorite = !isFavorite
+                    notifyDataSetChanged()
                 }
             }
             }

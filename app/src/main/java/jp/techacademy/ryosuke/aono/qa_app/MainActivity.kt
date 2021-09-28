@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private var mGenre = 0
     private lateinit var mDatabaseReference: DatabaseReference
     private lateinit var mQuestionArrayList: ArrayList<Question>
+    private lateinit var mFavoriteArrayList: ArrayList<FavoriteQuestion>
     private lateinit var mAdapter: QuestionsListAdapter
     private var mGenreRef: DatabaseReference? = null
     private var mFavoriteRef: DatabaseReference? = null
@@ -31,7 +32,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private val mEventListener = object : ChildEventListener{
         // データをRealtimeDBから取得する作業
         override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-            Log.d("tag","onChildAdded")
            val map = snapshot.value as Map<String,String>
             val title = map["title"] ?: ""
             val body = map["body"] ?: ""
@@ -98,16 +98,32 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     }
 
-    private val favoriteListener = object: ValueEventListener{
-        override fun onCancelled(databaseError: DatabaseError) {
-            Log.w("TAG", "loadPost:onCancelled", databaseError.toException())
+    private val favoriteListener = object: ChildEventListener{
+        override fun onCancelled(error: DatabaseError) {
+
         }
 
-        override fun onDataChange(snapshot: DataSnapshot) {
+        override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+        }
+
+        override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+//            val map = snapshot.value as Map<String,String>
+//            if(snapshot.key!!.equals(question.questionUid)){
+//
+//            }
+        }
+
+        override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+            Log.d("tag", snapshot.value as String)
             val favorite = snapshot.value
             if(favorite != null){
+                Log.d("tag", "ISFavoriteをtrueにする")
                 isFavorite = true
+                Log.d("isFavoriteのところ", isFavorite.toString())
             }
+        }
+
+        override fun onChildRemoved(snapshot: DataSnapshot) {
         }
 
     }
@@ -162,7 +178,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             // 該当の質問のお気に入りが存在しているのか確認する
             val user = FirebaseAuth.getInstance().currentUser
             if(user != null){
-                mFavoriteRef = mDatabaseReference.child(ContentsPATH).child("favorites").child(user.uid).child(mQuestionArrayList[position].uid)
+                mFavoriteRef = mDatabaseReference.child("favorites").child(user.uid).child(mQuestionArrayList[position].questionUid)
+                mFavoriteRef!!.addChildEventListener(favoriteListener)
                 intent.putExtra("isFavorite",isFavorite)
             }else{
                 intent.putExtra("isFavorite",false)
