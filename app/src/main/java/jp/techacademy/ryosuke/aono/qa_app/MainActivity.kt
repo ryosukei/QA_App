@@ -14,10 +14,7 @@ import androidx.core.view.GravityCompat
 import com.google.android.material.navigation.NavigationView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.ChildEventListener
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.app_bar_main.*
 import kotlinx.android.synthetic.main.content_main.*
@@ -28,9 +25,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var mDatabaseReference: DatabaseReference
     private lateinit var mQuestionArrayList: ArrayList<Question>
     private lateinit var mAdapter: QuestionsListAdapter
-    // TODO  ジャンルだけ別に設定する意味は？
     private var mGenreRef: DatabaseReference? = null
-
+    private var mFavoriteRef: DatabaseReference? = null
+    private var isFavorite: Boolean = false
     private val mEventListener = object : ChildEventListener{
         // データをRealtimeDBから取得する作業
         override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
@@ -48,7 +45,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                     byteArrayOf()
                 }
             val answerArrayList = ArrayList<Answer>()
-            val answerMap = map["answers"] as Map<String,String>
+            val answerMap = map["answers"] as Map<String,String>?
             if (answerMap != null) {
                 for (key in answerMap.keys) {
                     val temp = answerMap[key] as Map<String, String>
@@ -101,6 +98,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
     }
 
+    private val favoriteListener = object: ValueEventListener{
+        override fun onCancelled(databaseError: DatabaseError) {
+            Log.w("TAG", "loadPost:onCancelled", databaseError.toException())
+        }
+
+        override fun onDataChange(snapshot: DataSnapshot) {
+            val favorite = snapshot.value
+            if(favorite != null){
+                isFavorite = true
+            }
+        }
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -136,6 +147,28 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         toggle.syncState()
 
         nav_view.setNavigationItemSelectedListener(this)
+        mDatabaseReference = FirebaseDatabase.getInstance().reference
+
+        // ListViewの準備
+        mAdapter = QuestionsListAdapter(this)
+        mQuestionArrayList = ArrayList<Question>()
+        mAdapter.notifyDataSetChanged()
+
+        // adapterを準備したらlistview.で設定できる
+        listView.setOnItemClickListener{parent, view, position, id ->
+            // 質問のintent
+            val intent = Intent(applicationContext, QuestionDetailActivity::class.java)
+            intent.putExtra("question", mQuestionArrayList[position])
+            // 該当の質問のお気に入りが存在しているのか確認する
+            val user = FirebaseAuth.getInstance().currentUser
+            if(user != null){
+                mFavoriteRef = mDatabaseReference.child(ContentsPATH).child("favorites").child(user.uid).child(mQuestionArrayList[position].uid)
+                intent.putExtra("isFavorite",isFavorite)
+            }else{
+                intent.putExtra("isFavorite",false)
+            }
+            startActivity(intent)
+        }
     }
 
     // メニュードロワーに遷移する
