@@ -30,12 +30,10 @@ class SettingActivity : AppCompatActivity() {
 
         // UIの初期設定
         title = getString(R.string.settings_titile)
-
+        val user = FirebaseAuth.getInstance().currentUser
         changeButton.setOnClickListener{v->
             val im = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             im.hideSoftInputFromWindow(v.windowToken, InputMethodManager.HIDE_NOT_ALWAYS)
-
-            val user = FirebaseAuth.getInstance().currentUser
 
             if(user == null) {
                 // ログインしていない場合は何もしない

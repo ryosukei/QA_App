@@ -44,7 +44,7 @@ class QuestionDetailListAdapter(context: Context, private val mQuestion: Questio
             val bodyTextView = convertView.bodyTextView as TextView
             bodyTextView.text = body
             val nameTextView = convertView.nameTextView as TextView
-            nameTextView.text = body
+            nameTextView.text = name
 
             val bytes = mQuestion.imageBytes
             if(bytes.isNotEmpty()){
