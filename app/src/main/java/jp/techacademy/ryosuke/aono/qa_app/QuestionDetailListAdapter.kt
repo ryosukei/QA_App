@@ -58,13 +58,17 @@ class QuestionDetailListAdapter(context: Context, private val mQuestion: Questio
             if(user == null){
                 btnView.visibility = View.GONE
             }else{
+                changeFavoriteText(btnView)
                 // この質問がお気に入りに登録されているかどうかの判定
                 if(isFavorite){
-                    btnView.setBackgroundColor(Color.YELLOW)
-                    btnView.setTextColor(0xFFFFFF)
-                    btnView.text = "お気に入り済み"
-
+                    btnView.setOnClickListener { v ->
+                        val currentUser = FirebaseAuth.getInstance().currentUser
+                        val favoriteRef = mFavoriteRef.child("favorites").child(currentUser!!.uid).child(mQuestion.questionUid)
+                        favoriteRef.removeValue()
+                        isFavorite = !isFavorite
+                        notifyDataSetChanged()
                     }
+                }
                 else{
                 btnView.setOnClickListener { v ->
                     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -80,6 +84,7 @@ class QuestionDetailListAdapter(context: Context, private val mQuestion: Questio
                     val favoriteRef = mFavoriteRef.child("favorites").child(currentUser!!.uid).child(mQuestion.questionUid)
                     favoriteRef.setValue(data)
                     isFavorite = !isFavorite
+                    changeFavoriteText(btnView)
                     notifyDataSetChanged()
                 }
             }
@@ -99,6 +104,18 @@ class QuestionDetailListAdapter(context: Context, private val mQuestion: Questio
             nameTextView.text = name
         }
         return convertView
+    }
+
+    private fun changeFavoriteText(btnView:Button){
+        if(isFavorite){
+            btnView.setBackgroundColor(Color.rgb(255,247,102))
+            btnView.setTextColor(Color.rgb(0,0,0))
+            btnView.text = "お気に入り済み"
+        }else{
+            btnView.setBackgroundColor(Color.rgb(204,204,204))
+            btnView.setTextColor(Color.rgb(0,0,0))
+            btnView.text = "お気に入り"
+        }
     }
 
     override fun getItem(p0: Int): Any {
