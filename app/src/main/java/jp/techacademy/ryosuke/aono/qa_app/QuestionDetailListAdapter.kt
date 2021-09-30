@@ -73,14 +73,7 @@ class QuestionDetailListAdapter(context: Context, private val mQuestion: Questio
                 btnView.setOnClickListener { v ->
                     val currentUser = FirebaseAuth.getInstance().currentUser
                     val data =  HashMap<String, Any>()
-                    data["title"] = mQuestion.title
-                    data["body"] = body
-                    data["name"] = name
-                    // 画像をいい感じにする
-                    if(bytes != null){
-                        val bitmapString = Base64.encodeToString(bytes, Base64.DEFAULT)
-                        data["bytes"] =  bitmapString
-                    }
+                    data["genre"] = mQuestion.genre
                     val favoriteRef = mFavoriteRef.child("favorites").child(currentUser!!.uid).child(mQuestion.questionUid)
                     favoriteRef.setValue(data)
                     isFavorite = !isFavorite

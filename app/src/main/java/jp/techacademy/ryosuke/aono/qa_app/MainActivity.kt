@@ -30,7 +30,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private var mFavoriteRef: DatabaseReference? = null
     private var mFavoriteQuestionRef: DatabaseReference? = null
     private var isFavorite: Boolean = false
-    private var snapshotListener: ListenerRegistration? = null
     private val mEventListener = object : ChildEventListener{
         // データをRealtimeDBから取得する作業
         override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
@@ -115,6 +114,26 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
             Log.d("tag", snapshot.value.toString())
             val map = snapshot.value as Map<String,String>;
+            val uid = map["uid"] ?: ""
+            val questionUid = snapshot.key as String
+            val genreId = map["genre"].toString()
+            val favoriteQuestion = FavoriteQuestion(genreId,uid, questionUid)
+            mFavoriteArrayList.add(favoriteQuestion)
+        }
+
+        override fun onChildRemoved(snapshot: DataSnapshot) {
+        }
+
+    }
+
+    // お気に入り質問を取得するときのリスナー
+    private val favoriteQuestionListener = object: ValueEventListener {
+        override fun onCancelled(databaseError: DatabaseError) {
+            Log.w("TAG", "loadPost:onCancelled", databaseError.toException())
+        }
+
+        override fun onDataChange(dataSnapshot: DataSnapshot) {
+            val map = dataSnapshot.value as Map<String,String>
             val title = map["title"] ?: ""
             val body = map["body"] ?: ""
             val name = map["name"] ?: ""
@@ -126,12 +145,22 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 } else {
                     byteArrayOf()
                 }
-            val questionUid = snapshot.key as String
-            val favoriteQuestion = FavoriteQuestion( uid, questionUid)
-            mFavoriteArrayList.add(favoriteQuestion)
-        }
-
-        override fun onChildRemoved(snapshot: DataSnapshot) {
+            val answerArrayList = ArrayList<Answer>()
+            val answerMap = map["answers"] as Map<String,String>?
+            if (answerMap != null) {
+                for (key in answerMap.keys) {
+                    val temp = answerMap[key] as Map<String, String>
+                    val answerBody = temp["body"] ?: ""
+                    val answerName = temp["name"] ?: ""
+                    val answerUid = temp["uid"] ?: ""
+                    val answer = Answer(answerBody, answerName, answerUid, key)
+                    answerArrayList.add(answer)
+                }
+            }
+            val favoriteQuestion = Question(title, body, name, uid, dataSnapshot.key ?: "",
+                mGenre, bytes, answerArrayList)
+            mQuestionArrayList.add(favoriteQuestion)
+            mAdapter.notifyDataSetChanged()
         }
 
     }
@@ -181,6 +210,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         mAdapter = QuestionsListAdapter(this)
         mQuestionArrayList = ArrayList<Question>()
         mFavoriteArrayList = ArrayList<FavoriteQuestion>()
+        // 最初にお気に入り質問を取得しておく
+        mFavoriteRef = mDatabaseReference.child("favorites").child(user!!.uid)
+        mFavoriteRef!!.addChildEventListener(favoriteListener)
         mAdapter.notifyDataSetChanged()
         // adapterを準備したらlistview.で設定できる
         listView.setOnItemClickListener { parent, view, position, id ->
@@ -190,8 +222,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             // 該当の質問のお気に入りが存在しているのか確認する
             val user = FirebaseAuth.getInstance().currentUser
             if(user != null){
-                mFavoriteRef = mDatabaseReference.child("favorites").child(user!!.uid)
-                mFavoriteRef!!.addChildEventListener(favoriteListener)
                 for (data in mFavoriteArrayList) {
                     isFavorite = data.questionUid == mQuestionArrayList[position].questionUid
                 }
@@ -265,53 +295,14 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             mGenreRef = mDatabaseReference.child(ContentsPATH).child(mGenre.toString())
             mGenreRef!!.addChildEventListener(mEventListener)
         }else{
-            Log.d("tag","start")
             mQuestionArrayList.clear()
             mAdapter.setQuestionArrayList(mQuestionArrayList)
             listView.adapter = mAdapter
-            Log.d("tag",mFavoriteArrayList.toString())
             for(data in mFavoriteArrayList){
-                for(i in 1..4){
+                    mFavoriteQuestionRef =  mDatabaseReference.child(ContentsPATH).child(data.genreId).child(data.questionUid)
                     Log.d("tag",mFavoriteQuestionRef.toString())
-                    mFavoriteQuestionRef =  mDatabaseReference.child(ContentsPATH).child(i.toString()).child(data.questionUid)
-                    mFavoriteQuestionRef!!.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            val data = snapshot.value as Map<*, *>?
-                            val title = data?.get("title") ?: ""
-                            val body = map["body"] ?: ""
-                            val name = map["name"] ?: ""
-                            val uid = map["uid"] ?: ""
-                            val imageString = map["image"] ?: ""
-                            val bytes =
-                                if (imageString.isNotEmpty()) {
-                                    Base64.decode(imageString, Base64.DEFAULT)
-                                } else {
-                                    byteArrayOf()
-                                }
-                            val answerArrayList = ArrayList<Answer>()
-                            val answerMap = map["answers"] as Map<String,String>?
-                            if (answerMap != null) {
-                                for (key in answerMap.keys) {
-                                    val temp = answerMap[key] as Map<String, String>
-                                    val answerBody = temp["body"] ?: ""
-                                    val answerName = temp["name"] ?: ""
-                                    val answerUid = temp["uid"] ?: ""
-                                    val answer = Answer(answerBody, answerName, answerUid, key)
-                                    answerArrayList.add(answer)
-                                }
-                            }
-                            val question = Question(title, body, name, uid, snapshot.key ?: "",
-                                mGenre, bytes, answerArrayList)
-                            mQuestionArrayList.add(question)
-                        }
-
-                        override fun onCancelled(firebaseError: DatabaseError) {}
-                    })
-                    mFavoriteQuestionRef!!.addChildEventListener(mEventListener)
-                }
+                    mFavoriteQuestionRef!!.addValueEventListener(favoriteQuestionListener)
             }
-            mAdapter.setQuestionArrayList(mQuestionArrayList)
-            listView.adapter = mAdapter
         }
         return true
     }
