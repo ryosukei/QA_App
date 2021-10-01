@@ -211,9 +211,11 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         mQuestionArrayList = ArrayList<Question>()
         mFavoriteArrayList = ArrayList<FavoriteQuestion>()
         // 最初にお気に入り質問を取得しておく
-        mFavoriteRef = mDatabaseReference.child("favorites").child(user!!.uid)
-        mFavoriteRef!!.addChildEventListener(favoriteListener)
-        mAdapter.notifyDataSetChanged()
+        if(user != null){
+            mFavoriteRef = mDatabaseReference.child("favorites").child(user!!.uid)
+            mFavoriteRef!!.addChildEventListener(favoriteListener)
+            mAdapter.notifyDataSetChanged()
+        }
         // adapterを準備したらlistview.で設定できる
         listView.setOnItemClickListener { parent, view, position, id ->
             // 質問のintent
@@ -222,8 +224,11 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             // 該当の質問のお気に入りが存在しているのか確認する
             val user = FirebaseAuth.getInstance().currentUser
             if(user != null){
+                isFavorite = false
                 for (data in mFavoriteArrayList) {
-                    isFavorite = data.questionUid == mQuestionArrayList[position].questionUid
+                    if(data.questionUid == mQuestionArrayList[position].questionUid){
+                        isFavorite = true
+                    }
                 }
             }
             intent.putExtra("isFavorite", isFavorite)
